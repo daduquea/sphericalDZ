@@ -36,9 +36,9 @@ def save_h5_file(numpy_array, file_name):
     with h5py.File(file_name, 'w') as hf:
         hf.create_dataset('array',  data=numpy_array)   
         
-def load_h5_file(file_name, name_dataset = 'array'):
+def load_h5_file(file_name):
     with h5py.File(file_name, 'r') as hf:
-        data = hf[name_dataset][:]         
+        data = hf['array'][:]         
     return data
 
 def get_available_gpus():
@@ -171,7 +171,7 @@ def generator_spherical(path_to_X, X_list, path_to_y, y_list, batch_size = 1, va
         
         #print(X_list[random_index])       
         X_features = load_features_spherical(path_to_X, X_list[random_index], channels=variables)
-        Y = load_gt_spherical(path_to_y, y_list[random_index], n_classes = n_classes)
+        Y = load_gt_spherical(path_to_y, y_list[random_index])
         
         # data_augmentation    
         X_features, [Y, _] = perform_data_augmentation(is_validation, random_augmentation, X_features, Y)            
@@ -185,7 +185,7 @@ def generator_spherical(path_to_X, X_list, path_to_y, y_list, batch_size = 1, va
         #print("entra", len(all_X_features) )
         if len(all_X_features) == batch_size:
             print("returning...", np.array(all_X_features).shape, np.array(all_Y).shape)
-            #yield np.array(all_X_features), np.array(all_Y)  
+            yield np.array(all_X_features), np.array(all_Y)  
             all_X_features = []
             all_Y = []
 

@@ -321,94 +321,6 @@ def u_net6_both(shape, filters=4,int_space=4,output_channels=4,rate=.3):
     return Model(inputs, outputs=[conv0,conv0_2])
 
 
-def u_net3(shape, nb_filters_0=32, exp=1, conv_size=3, initialization='glorot_uniform', activation="relu", sigma_noise=0, output_channels=1):
-    """U-Net model, with three layers.
-
-    U-Net model using 3 maxpoolings/upsamplings, plus optional gaussian noise.
-
-    Arguments:
-    shape: image shape, in the format (nb_channels, x_size, y_size).
-    nb_filters_0 : initial number of filters in the convolutional layer.
-    exp : should be equal to 0 or 1. Indicates if the number of layers should be constant (0) or increase exponentially (1).
-    conv_size : size of convolution.
-    initialization: initialization of the convolutional layers.
-    activation: activation of the convolutional layers.
-    sigma_noise: standard deviation of the gaussian noise layer. If equal to zero, this layer is deactivated.
-    output_channels: number of output channels.
-
-    Returns:
-    U-Net model - it still needs to be compiled.
-
-    Reference:
-    U-Net: Convolutional Networks for Biomedical Image Segmentation
-    Olaf Ronneberger, Philipp Fischer, Thomas Brox
-    MICCAI 2015
-
-    Credits:
-    The starting point for the code of this funcions comes from:
-    https://github.com/jocicmarko/ultrasound-nerve-segmentation
-    by Marko Jocic
-    """
-
-    if K.image_data_format() == 'channels_first':
-        channel_axis = 1
-    else:
-        channel_axis = 3
-        
-    inputs = Input(shape)
-    conv1 = Conv2D(nb_filters_0, conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv1_1")(inputs)
-    conv1 = Conv2D(nb_filters_0, conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv1_2")(conv1)
-    pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
-
-    conv2 = Conv2D(nb_filters_0 * 2**(1 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv2_1")(pool1)
-    conv2 = Conv2D(nb_filters_0 * 2**(1 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv2_2")(conv2)
-    pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
-
-    conv3 = Conv2D(nb_filters_0 * 2**(2 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv3_1")(pool2)
-    conv3 = Conv2D(nb_filters_0 * 2**(2 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv3_2")(conv3)
-    pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
-
-    conv4 = Conv2D(nb_filters_0 * 2**(3 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv4_1")(pool3)
-    conv4 = Conv2D(nb_filters_0 * 2**(3 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv4_2")(conv4)
-
-    up5 = concatenate(
-        [UpSampling2D(size=(2, 2))(conv4), conv3], axis=channel_axis)
-    conv5 = Conv2D(nb_filters_0 * 2**(2 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv5_1")(up5)
-    conv5 = Conv2D(nb_filters_0 * 2**(2 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv5_2")(conv5)
-
-    up6 = concatenate(
-        [UpSampling2D(size=(2, 2))(conv5), conv2], axis=channel_axis)
-    conv6 = Conv2D(nb_filters_0 * 2**(1 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv6_1")(up6)
-    conv6 = Conv2D(nb_filters_0 * 2**(1 * exp), conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv6_2")(conv6)
-
-    up7 = concatenate(
-        [UpSampling2D(size=(2, 2))(conv6), conv1], axis=channel_axis)
-    conv7 = Conv2D(nb_filters_0, conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv7_1")(up7)
-    conv7 = Conv2D(nb_filters_0, conv_size, activation=activation,
-                   padding='same', kernel_initializer=initialization, name="conv7_2")(conv7)
-
-    if sigma_noise > 0:
-        conv7 = GaussianNoise(sigma_noise)(conv7)
-
-    conv10 = Conv2D(output_channels, 1, activation='sigmoid', name="conv_out")(conv7)
-
-    return Model(inputs, conv10)
-        
-
-
 # LOSS FUNCTIONS
 import tensorflow as tf
 def mask_jaccard_loss_mean_smooth(y_true, y_pred, smooth=10):
@@ -517,30 +429,6 @@ def jaccard_distance(y_true, y_pred, smooth=100):
 
     return (1 - jac) * smooth
 
-def jaccard_pow_coef(y_true, y_pred, smooth = 10):
-    p_value = 2.0
-    print("p_value", p_value)
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
-    term_true = K.sum(K.pow(y_true_f, p_value))
-    term_pred = K.sum(K.pow(y_pred_f, p_value))
-
-    union = term_true + term_pred - intersection
-    return (intersection + smooth) / (union + smooth)
-
-def jaccard2_coef(y_true, y_pred, smooth=10):
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
-    intersection = K.sum(y_true_f * y_pred_f)
-    union = K.sum(y_true_f * y_true_f) + K.sum(y_pred_f * y_pred_f) - intersection
-    return (intersection + smooth) / (union + smooth)
-
-
-def jaccard2_loss(y_true, y_pred, smooth = 10):
-    loss_value = 1 - jaccard_pow_coef(y_true, y_pred, smooth)
-    print('shape', loss_value.shape)
-    return loss_value
 
 
 #################################################################################

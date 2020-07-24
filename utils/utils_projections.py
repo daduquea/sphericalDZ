@@ -20,7 +20,6 @@ def move_local_proj_to_global(proj, bev_proj, global_parameters, local_parameter
     # fill image
     #print("global_parameters", global_parameters)
     #print("local_parameters", local_parameters)
-    #print("placed_img", height_glob, width_glob)
     placed_img = np.zeros([height_glob, width_glob])
     placed_img [disp_h:disp_h + height_local, disp_w:disp_w+width_local] = bev_proj 
     
@@ -30,9 +29,9 @@ def move_local_proj_to_global(proj, bev_proj, global_parameters, local_parameter
     else:
         return placed_img
 
-def compute_all_projections(proj, full_xyz_points, full_labels, global_parameters, z_min = -10000, z_max = 10000,  acc_clip = 255):
+def compute_all_projections(proj, full_xyz_points, full_labels, global_parameters, z_min = -100, z_max = 100,  acc_clip = 255):
     # some points
-    idx_some_points = np.where( (full_xyz_points[:,2] > z_min) & (full_xyz_points[:,2] <= z_max) )[0]
+    idx_some_points = np.where( (full_xyz_points[:,2] < z_max) & (full_xyz_points[:,2] > z_min) )[0]
     some_points = full_xyz_points[idx_some_points, :]
     some_labels = full_labels[idx_some_points]    
     
@@ -53,35 +52,7 @@ def compute_all_projections(proj, full_xyz_points, full_labels, global_parameter
     # GT
     gt_projection, local_parameters, mapping = compute_gt_image(proj, some_points, some_labels, 'max')
     gt_projection_centered, move = move_local_proj_to_global(proj, gt_projection, global_parameters, local_parameters, mapping)
-    return bev_hmax_centered, bev_acc_clipped, bev_acc_centered, gt_projection_centered, mapping, move, idx_some_points
-
-
-def compute_projections_for_crops(proj, full_xyz_points, full_labels, global_parameters, z_min = -10000, z_max = 10000):
-    # some points
-    idx_some_points = np.where( (full_xyz_points[:,2] > z_min) & (full_xyz_points[:,2] <= z_max) )[0]
-    some_points = full_xyz_points[idx_some_points, :]
-    some_labels = full_labels[idx_some_points]    
-    
-    #features
-    # h_max
-    feature_to_proj = some_points[:,2]
-    aggregate_func = 'max'
-    bev_hmax, local_parameters = compute_local_projection(proj, some_points, feature_to_proj , aggregate_func, global_parameters)
-    bev_hmax_centered = move_local_proj_to_global(proj, bev_hmax, global_parameters, local_parameters)    
-    
-    # h_min
-    feature_to_proj = some_points[:,2]
-    aggregate_func = 'min'
-    bev_hmin, local_parameters = compute_local_projection(proj, some_points, feature_to_proj , aggregate_func, global_parameters)
-    bev_hmin_centered = move_local_proj_to_global(proj, bev_hmin, global_parameters, local_parameters)        
-    
-    # GT
-    gt_projection, local_parameters, mapping = compute_gt_image(proj, some_points, some_labels, 'max')
-    gt_projection_centered, move = move_local_proj_to_global(proj, gt_projection, global_parameters, local_parameters, mapping)
-    return bev_hmax_centered, bev_hmin_centered, gt_projection_centered, mapping, move, idx_some_points  
-    
-    
-    
+    return bev_hmax_centered, bev_acc_clipped, bev_acc_centered, gt_projection_centered, mapping, move
 
 # Method to find "closest" index in spherical projection
 def min_aggregation_proj(height, width, proj, points):
